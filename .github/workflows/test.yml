@@ -13,71 +13,68 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Checkout the repository
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Set up system dependencies
       - name: Install system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y perl make cpanminus luarocks lua5.1 liblua5.1-0-dev libtest-harness-perl
 
-      # Install Lua dependencies via luarocks
       - name: Install Lua dependencies
         run: |
           sudo luarocks install luafilesystem
           sudo luarocks install lua-resty-http
 
-      # Install Perl dependencies and ensure prove
       - name: Install Perl dependencies
         run: |
           sudo cpanm --notest Test::Nginx::Socket::Lua
           sudo cpanm --notest Test::Harness
           /usr/bin/prove --version || echo "Prove installation failed"
 
-      # Clone APISIX and set up test environment with its Nginx
       - name: Setup APISIX environment
         run: |
           git clone https://github.com/apache/apisix.git
           cd apisix
-          make deps  # This installs OpenResty (Nginx with Lua support)
-          # Ensure servroot directory exists
+          make deps || { echo "make deps failed"; exit 1; }  # Fail if deps installation fails
           mkdir -p t/servroot/conf
+          # Debug: List deps directory to find OpenResty
+          ls -la deps/
           # Find exact OpenResty path
-          OPENRESTY_PATH=$(find deps -maxdepth 2 -type d -name "openresty-*")
+          OPENRESTY_PATH=$(find deps -maxdepth 2 -type d -name "openresty-*" | head -n 1)
+          if [ -z "$OPENRESTY_PATH" ]; then
+            echo "Error: OpenResty not found in deps/"
+            exit 1
+          fi
           echo "OPENRESTY_PATH=${OPENRESTY_PATH}" >> $GITHUB_ENV
           cd ..
 
-      # Copy plugin and test files
       - name: Copy plugin and test files
         run: |
           cp plugins/proxy-chain.lua apisix/apisix/plugins/
           mkdir -p apisix/t/plugin
           cp t/proxy-chain.t apisix/t/plugin/
 
-      # Debug: Check environment and Nginx config
       - name: Debug environment setup
         working-directory: apisix
         run: |
-          pwd  # Print current working directory
+          pwd
           ls -la t/servroot/ t/servroot/conf/ || echo "servroot directories missing"
           echo "PATH is: $PATH"
           echo "OpenResty path: $OPENRESTY_PATH"
-          ${OPENRESTY_PATH}/nginx/sbin/nginx -V  # Check Nginx version
+          ${OPENRESTY_PATH}/nginx/sbin/nginx -V 2>&1  # Check Nginx version
           ${OPENRESTY_PATH}/nginx/sbin/nginx -t -p t/servroot/ -c t/servroot/conf/nginx.conf || echo "Nginx config test failed"
           /usr/bin/prove --version
 
-      # Run tests with APISIX's Nginx
       - name: Run tests
         working-directory: apisix
         env:
-          PATH: "${OPENRESTY_PATH}/nginx/sbin:/usr/bin:${PATH}"  # Use exact OpenResty path
+          PATH: "${OPENRESTY_PATH}/nginx/sbin:/usr/bin:${PATH}"
+          TEST_NGINX_BINARY: "${OPENRESTY_PATH}/nginx/sbin/nginx"  # Explicitly set Nginx binary
         run: |
-          nginx -V  # Verify which Nginx is used
+          nginx -V 2>&1
           prove -I. -v -r t/plugin/proxy-chain.t || true
 
-      # Upload test artifacts if failed
       - name: Upload test artifacts (if failed)
         if: failure()
         uses: actions/upload-artifact@v4
