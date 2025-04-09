@@ -19,7 +19,7 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y perl make cpanminus luarocks lua5.1 liblua5.1-0-dev libtest-harness-perl
+          sudo apt-get install -y perl make cpanminus luarocks lua5.1 liblua5.1-0-dev libtest-harness-perl build-essential libssl-dev git
 
       - name: Install Lua dependencies
         run: |
@@ -36,15 +36,21 @@ jobs:
         run: |
           git clone https://github.com/apache/apisix.git
           cd apisix
-          make deps || { echo "make deps failed"; exit 1; }  # Fail if deps installation fails
+          echo "Running make deps..."
+          make deps || { echo "make deps failed, see above for details"; exit 1; }
           mkdir -p t/servroot/conf
-          # Debug: List deps directory to find OpenResty
+          echo "Listing deps directory:"
           ls -la deps/
-          # Find exact OpenResty path
           OPENRESTY_PATH=$(find deps -maxdepth 2 -type d -name "openresty-*" | head -n 1)
           if [ -z "$OPENRESTY_PATH" ]; then
-            echo "Error: OpenResty not found in deps/"
-            exit 1
+            echo "Error: OpenResty not found in deps/, attempting manual installation..."
+            curl -L https://openresty.org/download/openresty-1.21.4.1.tar.gz -o openresty.tar.gz
+            tar -xzf openresty.tar.gz -C deps/
+            OPENRESTY_PATH=$(find deps -maxdepth 2 -type d -name "openresty-*" | head -n 1)
+            if [ -z "$OPENRESTY_PATH" ]; then
+              echo "Error: Manual installation of OpenResty failed"
+              exit 1
+            fi
           fi
           echo "OPENRESTY_PATH=${OPENRESTY_PATH}" >> $GITHUB_ENV
           cd ..
@@ -62,7 +68,7 @@ jobs:
           ls -la t/servroot/ t/servroot/conf/ || echo "servroot directories missing"
           echo "PATH is: $PATH"
           echo "OpenResty path: $OPENRESTY_PATH"
-          ${OPENRESTY_PATH}/nginx/sbin/nginx -V 2>&1  # Check Nginx version
+          ${OPENRESTY_PATH}/nginx/sbin/nginx -V 2>&1
           ${OPENRESTY_PATH}/nginx/sbin/nginx -t -p t/servroot/ -c t/servroot/conf/nginx.conf || echo "Nginx config test failed"
           /usr/bin/prove --version
 
@@ -70,7 +76,7 @@ jobs:
         working-directory: apisix
         env:
           PATH: "${OPENRESTY_PATH}/nginx/sbin:/usr/bin:${PATH}"
-          TEST_NGINX_BINARY: "${OPENRESTY_PATH}/nginx/sbin/nginx"  # Explicitly set Nginx binary
+          TEST_NGINX_BINARY: "${OPENRESTY_PATH}/nginx/sbin/nginx"
         run: |
           nginx -V 2>&1
           prove -I. -v -r t/plugin/proxy-chain.t || true
