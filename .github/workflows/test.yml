@@ -21,7 +21,7 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y perl make cpanminus luarocks lua5.1 liblua5.1-0-dev
+          sudo apt-get install -y perl make cpanminus luarocks lua5.1 liblua5.1-0-dev libtest-harness-perl
 
       # Install Lua dependencies via luarocks
       - name: Install Lua dependencies
@@ -33,6 +33,8 @@ jobs:
       - name: Install Perl dependencies
         run: |
           sudo cpanm --notest Test::Nginx::Socket::Lua
+          # Ensure prove is available
+          which prove || sudo cpanm --notest Test::Harness
 
       # Clone APISIX and set up test environment with its Nginx
       - name: Setup APISIX environment
@@ -57,8 +59,8 @@ jobs:
         run: |
           pwd  # Print current working directory
           ls -la t/servroot/ t/servroot/conf/ || echo "servroot directories missing"
-          # Use APISIX's Nginx (OpenResty) instead of system Nginx
           ./deps/openresty-*/nginx/sbin/nginx -t -p t/servroot/ -c t/servroot/conf/nginx.conf || echo "Nginx config test failed"
+          which prove  # Check if prove is available
 
       # Run tests with APISIX's Nginx
       - name: Run tests
