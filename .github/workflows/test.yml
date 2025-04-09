@@ -19,7 +19,7 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y perl make cpanminus luarocks lua5.1 liblua5.1-0-dev libtest-harness-perl build-essential libssl-dev git
+          sudo apt-get install -y perl make cpanminus luarocks lua5.1 liblua5.1-0-dev libtest-harness-perl build-essential libssl-dev git libpcre3-dev zlib1g-dev
 
       - name: Install Lua dependencies
         run: |
@@ -42,21 +42,23 @@ jobs:
           echo "Listing deps directory:"
           ls -la deps/
           OPENRESTY_PATH=$(find deps -maxdepth 2 -type d -name "openresty-*" | head -n 1)
-          if [ -z "$OPENRESTY_PATH" ]; then
-            echo "Error: OpenResty not found in deps/, attempting manual installation..."
+          if [ -z "$OPENRESTY_PATH" ] || [ ! -f "$OPENRESTY_PATH/nginx/sbin/nginx" ]; then
+            echo "Error: OpenResty not fully installed, attempting manual installation..."
             curl -L https://openresty.org/download/openresty-1.21.4.1.tar.gz -o openresty.tar.gz
             tar -xzf openresty.tar.gz -C deps/
             OPENRESTY_PATH="deps/openresty-1.21.4.1"
             cd $OPENRESTY_PATH
-            ./configure --with-pcre-jit --with-ipv6 --with-http_ssl_module
-            make || { echo "Failed to build OpenResty"; exit 1; }
+            echo "Configuring OpenResty..."
+            ./configure --with-pcre-jit --with-ipv6 --with-http_ssl_module --with-http_v2_module || { echo "Configure failed"; exit 1; }
+            echo "Building OpenResty..."
+            make -j$(nproc) || { echo "Make failed"; exit 1; }
             cd ../..
           fi
           echo "Listing OpenResty directory:"
           ls -la $OPENRESTY_PATH
-          # Verify nginx binary exists
+          ls -la $OPENRESTY_PATH/nginx/sbin/
           if [ ! -f "$OPENRESTY_PATH/nginx/sbin/nginx" ]; then
-            echo "Error: nginx binary not found in $OPENRESTY_PATH/nginx/sbin/"
+            echo "Error: nginx binary still not found in $OPENRESTY_PATH/nginx/sbin/"
             exit 1
           fi
           echo "OPENRESTY_PATH=${OPENRESTY_PATH}" >> $GITHUB_ENV
