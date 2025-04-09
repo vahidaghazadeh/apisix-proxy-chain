@@ -45,10 +45,10 @@ jobs:
         run: |
           prove -I. -r t/plugin/proxy-chain.t
 
-      # Optional: Upload test logs if needed
+      # Upload test artifacts if tests fail (updated to v4)
       - name: Upload test artifacts (if failed)
         if: failure()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: test-logs
           path: apisix/t/plugin/*.t
