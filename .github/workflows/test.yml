@@ -33,10 +33,7 @@ jobs:
       - name: Install Perl dependencies
         run: |
           sudo cpanm --notest Test::Nginx::Socket::Lua
-          # Explicitly install prove if missing
-          sudo apt-get install -y perl
           sudo cpanm --notest Test::Harness
-          # Verify prove is installed
           /usr/bin/prove --version || echo "Prove installation failed"
 
       # Clone APISIX and set up test environment with its Nginx
@@ -47,6 +44,9 @@ jobs:
           make deps  # This installs OpenResty (Nginx with Lua support)
           # Ensure servroot directory exists
           mkdir -p t/servroot/conf
+          # Find exact OpenResty path
+          OPENRESTY_PATH=$(find deps -maxdepth 2 -type d -name "openresty-*")
+          echo "OPENRESTY_PATH=${OPENRESTY_PATH}" >> $GITHUB_ENV
           cd ..
 
       # Copy plugin and test files
@@ -62,15 +62,19 @@ jobs:
         run: |
           pwd  # Print current working directory
           ls -la t/servroot/ t/servroot/conf/ || echo "servroot directories missing"
-          ./deps/openresty-*/nginx/sbin/nginx -t -p t/servroot/ -c t/servroot/conf/nginx.conf || echo "Nginx config test failed"
-          /usr/bin/prove --version || echo "Prove not found in debug step"
+          echo "PATH is: $PATH"
+          echo "OpenResty path: $OPENRESTY_PATH"
+          ${OPENRESTY_PATH}/nginx/sbin/nginx -V  # Check Nginx version
+          ${OPENRESTY_PATH}/nginx/sbin/nginx -t -p t/servroot/ -c t/servroot/conf/nginx.conf || echo "Nginx config test failed"
+          /usr/bin/prove --version
 
       # Run tests with APISIX's Nginx
       - name: Run tests
         working-directory: apisix
         env:
-          PATH: "./deps/openresty-*/nginx/sbin:/usr/bin:${PATH}"  # Explicitly add /usr/bin to PATH
+          PATH: "${OPENRESTY_PATH}/nginx/sbin:/usr/bin:${PATH}"  # Use exact OpenResty path
         run: |
+          nginx -V  # Verify which Nginx is used
           prove -I. -v -r t/plugin/proxy-chain.t || true
 
       # Upload test artifacts if failed
