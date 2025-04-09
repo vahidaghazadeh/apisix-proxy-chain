@@ -49,13 +49,16 @@ jobs:
             OPENRESTY_PATH="deps/openresty-1.21.4.1"
             cd $OPENRESTY_PATH
             echo "Configuring OpenResty..."
-            ./configure --with-pcre-jit --with-ipv6 --with-http_ssl_module --with-http_v2_module || { echo "Configure failed"; exit 1; }
+            ./configure --prefix=$PWD --with-pcre-jit --with-ipv6 --with-http_ssl_module --with-http_v2_module || { echo "Configure failed"; exit 1; }
             echo "Building OpenResty..."
             make -j$(nproc) || { echo "Make failed"; exit 1; }
+            echo "Installing OpenResty..."
+            make install || { echo "Make install failed"; exit 1; }
             cd ../..
           fi
           echo "Listing OpenResty directory:"
           ls -la $OPENRESTY_PATH
+          echo "Listing nginx/sbin directory:"
           ls -la $OPENRESTY_PATH/nginx/sbin/
           if [ ! -f "$OPENRESTY_PATH/nginx/sbin/nginx" ]; then
             echo "Error: nginx binary still not found in $OPENRESTY_PATH/nginx/sbin/"
