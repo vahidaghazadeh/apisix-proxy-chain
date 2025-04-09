@@ -252,5 +252,38 @@ The `proxy-chain` plugin for APISIX allows you to chain multiple upstream servic
 | services.method| string | Yes      | -       | HTTP method (e.g., "GET", "POST").              |
 | token_header   | string | No       | -       | Custom header to pass a token between services.  |
 
+
+## Expected Behavior:
+The plugin sends {"order_id": "12345"} to customer_service/api/v1/user, receiving something like {"user_id": "67890"}.
+
+It then sends the merged data {"order_id": "12345", "user_id": "67890"} to payment_service/api/v1/validate, receiving {"status": "valid"}.
+
+The final merged data {"order_id": "12345", "user_id": "67890", "status": "valid"} is rewritten to /api/v1/checkout and sent to the upstream.
+
+## Changes Introduced
+Added apisix/apisix/plugins/proxy-chain.lua with the plugin implementation.
+
+Updated documentation in docs/en/latest/plugins/proxy-chain.md (to be added in a follow-up commit if needed).
+
+## Why Include This Plugin?
+Flexibility: Enables complex service orchestration without additional middleware.
+
+Performance: Reduces client-side latency by handling chaining server-side.
+
+Reusability: Useful across various use cases like authentication flows, data aggregation, and microservices coordination.
+
+## Testing
+The plugin has been tested in a Dockerized APISIX environment (version 3.11.0-debian) with the example configuration above.
+
+Error handling for failed service calls and invalid JSON responses is verified.
+
+Suggestions for unit tests in t/plugin/ are welcome!
+
+## Next Steps
+Requesting feedback on the implementation and configuration schema.
+
+Willing to add unit tests if required for acceptance
+
+
 ## License
 This plugin is licensed under the Apache License 2.0, consistent with APISIX.

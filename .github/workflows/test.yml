@@ -1,0 +1,54 @@
+name: Test Proxy-Chain Plugin
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout the repository
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Set up Perl environment
+      - name: Install Perl and dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y perl make cpanminus nginx
+          sudo cpanm --notest Test::Nginx::Socket::Lua
+
+      # Set up APISIX dependencies
+      - name: Install APISIX test dependencies
+        run: |
+          git clone https://github.com/apache/apisix.git
+          cd apisix
+          make deps
+          cd ..
+
+      # Copy plugin and test files to APISIX directory
+      - name: Prepare APISIX environment
+        run: |
+          cp plugins/proxy-chain.lua apisix/apisix/plugins/
+          mkdir -p apisix/t/plugin
+          cp t/proxy-chain.t apisix/t/plugin/
+
+      # Run tests
+      - name: Run tests
+        working-directory: apisix
+        run: |
+          prove -I. -r t/plugin/proxy-chain.t
+
+      # Optional: Upload test logs if needed
+      - name: Upload test artifacts (if failed)
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-logs
+          path: apisix/t/plugin/*.t
