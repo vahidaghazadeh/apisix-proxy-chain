@@ -40,6 +40,8 @@ jobs:
           git clone https://github.com/apache/apisix.git
           cd apisix
           make deps
+          # Ensure servroot directory is created
+          mkdir -p t/servroot/conf
           cd ..
 
       # Copy plugin and test files
@@ -49,11 +51,13 @@ jobs:
           mkdir -p apisix/t/plugin
           cp t/proxy-chain.t apisix/t/plugin/
 
-      # Debug: Check Nginx config and permissions
-      - name: Debug Nginx setup
+      # Debug: Check environment and Nginx config
+      - name: Debug environment setup
+        working-directory: apisix
         run: |
-          sudo nginx -t -p apisix/t/servroot/ -c apisix/t/servroot/conf/nginx.conf || echo "Nginx config test failed"
-          ls -ld apisix/t/servroot/ apisix/t/servroot/conf/
+          pwd  # Print current working directory
+          ls -la t/servroot/ t/servroot/conf/ || echo "servroot directories missing"
+          sudo nginx -t -p t/servroot/ -c t/servroot/conf/nginx.conf || echo "Nginx config test failed"
 
       # Run tests with verbose output
       - name: Run tests
