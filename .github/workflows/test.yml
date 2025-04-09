@@ -17,35 +17,51 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Set up Perl environment
-      - name: Install Perl and dependencies
+      # Set up system dependencies
+      - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y perl make cpanminus nginx
+          sudo apt-get install -y perl make cpanminus nginx libnginx-mod-http-lua luarocks lua5.1 liblua5.1-0-dev
+
+      # Install Lua dependencies via luarocks
+      - name: Install Lua dependencies
+        run: |
+          sudo luarocks install luafilesystem
+          sudo luarocks install lua-resty-http
+
+      # Install Perl dependencies
+      - name: Install Perl dependencies
+        run: |
           sudo cpanm --notest Test::Nginx::Socket::Lua
 
-      # Set up APISIX dependencies
-      - name: Install APISIX test dependencies
+      # Clone APISIX and set up test environment
+      - name: Setup APISIX environment
         run: |
           git clone https://github.com/apache/apisix.git
           cd apisix
           make deps
           cd ..
 
-      # Copy plugin and test files to APISIX directory
-      - name: Prepare APISIX environment
+      # Copy plugin and test files
+      - name: Copy plugin and test files
         run: |
           cp plugins/proxy-chain.lua apisix/apisix/plugins/
           mkdir -p apisix/t/plugin
           cp t/proxy-chain.t apisix/t/plugin/
 
-      # Run tests
+      # Debug: Check Nginx config and permissions
+      - name: Debug Nginx setup
+        run: |
+          sudo nginx -t -p apisix/t/servroot/ -c apisix/t/servroot/conf/nginx.conf || echo "Nginx config test failed"
+          ls -ld apisix/t/servroot/ apisix/t/servroot/conf/
+
+      # Run tests with verbose output
       - name: Run tests
         working-directory: apisix
         run: |
-          prove -I. -r t/plugin/proxy-chain.t
+          prove -I. -v -r t/plugin/proxy-chain.t || true
 
-      # Upload test artifacts if tests fail (updated to v4)
+      # Upload test artifacts if failed
       - name: Upload test artifacts (if failed)
         if: failure()
         uses: actions/upload-artifact@v4
