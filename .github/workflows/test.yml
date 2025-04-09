@@ -64,7 +64,8 @@ jobs:
             echo "Error: nginx binary still not found in $OPENRESTY_PATH/nginx/sbin/"
             exit 1
           fi
-          echo "OPENRESTY_PATH=${OPENRESTY_PATH}" >> $GITHUB_ENV
+          chmod +x $OPENRESTY_PATH/nginx/sbin/nginx  # Ensure nginx is executable
+          echo "OPENRESTY_PATH=$(realpath $OPENRESTY_PATH)" >> $GITHUB_ENV  # Use absolute path
           cd ..
 
       - name: Copy plugin and test files
@@ -79,18 +80,22 @@ jobs:
           pwd
           ls -la t/servroot/ t/servroot/conf/ || echo "servroot directories missing"
           echo "PATH is: $PATH"
-          echo "OpenResty path: $OPENRESTY_PATH"
-          ${OPENRESTY_PATH}/nginx/sbin/nginx -V 2>&1
-          ${OPENRESTY_PATH}/nginx/sbin/nginx -t -p t/servroot/ -c t/servroot/conf/nginx.conf || echo "Nginx config test failed"
+          echo "Resolved OpenResty path: $OPENRESTY_PATH"
+          echo "Checking nginx binary:"
+          ls -la $OPENRESTY_PATH/nginx/sbin/nginx
+          $OPENRESTY_PATH/nginx/sbin/nginx -V 2>&1
+          $OPENRESTY_PATH/nginx/sbin/nginx -t -p t/servroot/ -c t/servroot/conf/nginx.conf || echo "Nginx config test failed"
           /usr/bin/prove --version
 
       - name: Run tests
         working-directory: apisix
         env:
-          PATH: "${OPENRESTY_PATH}/nginx/sbin:/usr/bin:${PATH}"
-          TEST_NGINX_BINARY: "${OPENRESTY_PATH}/nginx/sbin/nginx"
+          PATH: "$OPENRESTY_PATH/nginx/sbin:/usr/bin:$PATH"  # Avoid ${} substitution issues
+          TEST_NGINX_BINARY: "$OPENRESTY_PATH/nginx/sbin/nginx"
         run: |
-          nginx -V 2>&1
+          echo "PATH is: $PATH"
+          echo "TEST_NGINX_BINARY is: $TEST_NGINX_BINARY"
+          $OPENRESTY_PATH/nginx/sbin/nginx -V 2>&1  # Use absolute path directly
           prove -I. -v -r t/plugin/proxy-chain.t || true
 
       - name: Upload test artifacts (if failed)
