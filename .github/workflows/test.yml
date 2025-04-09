@@ -46,11 +46,18 @@ jobs:
             echo "Error: OpenResty not found in deps/, attempting manual installation..."
             curl -L https://openresty.org/download/openresty-1.21.4.1.tar.gz -o openresty.tar.gz
             tar -xzf openresty.tar.gz -C deps/
-            OPENRESTY_PATH=$(find deps -maxdepth 2 -type d -name "openresty-*" | head -n 1)
-            if [ -z "$OPENRESTY_PATH" ]; then
-              echo "Error: Manual installation of OpenResty failed"
-              exit 1
-            fi
+            OPENRESTY_PATH="deps/openresty-1.21.4.1"
+            cd $OPENRESTY_PATH
+            ./configure --with-pcre-jit --with-ipv6 --with-http_ssl_module
+            make || { echo "Failed to build OpenResty"; exit 1; }
+            cd ../..
+          fi
+          echo "Listing OpenResty directory:"
+          ls -la $OPENRESTY_PATH
+          # Verify nginx binary exists
+          if [ ! -f "$OPENRESTY_PATH/nginx/sbin/nginx" ]; then
+            echo "Error: nginx binary not found in $OPENRESTY_PATH/nginx/sbin/"
+            exit 1
           fi
           echo "OPENRESTY_PATH=${OPENRESTY_PATH}" >> $GITHUB_ENV
           cd ..
