@@ -1,6 +1,26 @@
-# Proxy Chain Plugin for APISIX
+---
+title: Proxy Chain Plugin for APISIX
+---
 
-The `proxy-chain` plugin for APISIX allows you to chain multiple upstream service calls in a sequence, passing data between them as needed. This is particularly useful for workflows where a request needs to interact with multiple services before returning a final response to the client.
+<!--
+#
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+-->
+[proxy-chain](https://github.com/apache/apisix) is a plugin for [APISIX](https://github.com/apache/apisix) that allows you to chain multiple upstream service calls in sequence, passing data between them as needed. This is particularly useful for workflows where a request must interact with several services before returning a final response to the client.
 
 ## Features
 - Chain multiple upstream service calls in a defined order.
@@ -19,46 +39,46 @@ The `proxy-chain` plugin for APISIX allows you to chain multiple upstream servic
 
 #### Steps
 1. **Prepare the Plugin File**:
-   - Place the `proxy-chain.lua` file in a local directory, e.g., `./plugins/`.
+    - Place the `proxy-chain.lua` file in a local directory, e.g., `./plugins/`.
 
 2. **Create a Dockerfile**:
-   - Create a `Dockerfile` in your project directory:
-     ```Dockerfile
-     FROM apache/apisix:3.11.0-debian
-     USER root
-     COPY ./plugins/proxy-chain.lua /usr/local/apisix/apisix/plugins/proxy-chain.lua
-     RUN chown -R apisix:apisix /usr/local/apisix/apisix/plugins/proxy-chain.lua
-     CMD ["apisix", "start"]
-     ```
+    - Create a `Dockerfile` in your project directory:
+      ```Dockerfile
+      FROM apache/apisix:3.11.0-debian
+      USER root
+      COPY ./plugins/proxy-chain.lua /usr/local/apisix/apisix/plugins/proxy-chain.lua
+      RUN chown -R apisix:apisix /usr/local/apisix/apisix/plugins/proxy-chain.lua
+      CMD ["apisix", "start"]
+      ```
 
 3. **Build and Run**:
-   - Build the Docker image and run it using `docker-compose` or directly:
-     ```bash
-     docker build -t apisix-with-proxy-chain .
-     docker run -d -p 9080:9080 -p 9180:9180 apisix-with-proxy-chain
-     ```
-   - Alternatively, use a `docker-compose.yml`:
-     ```yaml
-     version: "3"
-     services:
-       apisix:
-         image: apisix-with-proxy-chain
-         build:
-           context: .
-           dockerfile: Dockerfile
-         ports:
-           - "9080:9080"
-           - "9180:9180"
-     ```
-     ```bash
-     docker-compose up -d --build
-     ```
+    - Build the Docker image and run it using `docker-compose` or directly:
+      ```bash
+      docker build -t apisix-with-proxy-chain .
+      docker run -d -p 9080:9080 -p 9180:9180 apisix-with-proxy-chain
+      ```
+    - Alternatively, use a `docker-compose.yml`:
+      ```yaml
+      version: "3"
+      services:
+        apisix:
+          image: apisix-with-proxy-chain
+          build:
+            context: .
+            dockerfile: Dockerfile
+          ports:
+            - "9080:9080"
+            - "9180:9180"
+      ```
+      ```bash
+      docker-compose up -d --build
+      ```
 
 4. **Reload APISIX**:
-   - Ensure the plugin is loaded:
-     ```bash
-     docker exec <container_name> apisix reload
-     ```
+    - Ensure the plugin is loaded:
+      ```bash
+      docker exec <container_name> apisix reload
+      ```
 
 ### Kubernetes
 
@@ -69,80 +89,80 @@ The `proxy-chain` plugin for APISIX allows you to chain multiple upstream servic
 
 #### Steps
 1. **Prepare the Plugin File**:
-   - Place `proxy-chain.lua` in a local directory, e.g., `./plugins/`.
+    - Place `proxy-chain.lua` in a local directory, e.g., `./plugins/`.
 
 2. **Create a ConfigMap**:
-   - Define a ConfigMap to include the plugin file:
-     ```yaml
-     apiVersion: v1
-     kind: ConfigMap
-     metadata:
-       name: apisix-plugins
-     data:
-       proxy-chain.lua: |
-         -- Content of proxy-chain.lua goes here
-         -- (Paste the entire Lua code here)
-     ```
+    - Define a ConfigMap to include the plugin file:
+      ```yaml
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: apisix-plugins
+      data:
+        proxy-chain.lua: |
+          -- Content of proxy-chain.lua goes here
+          -- (Paste the entire Lua code here)
+      ```
 
 3. **Deploy APISIX with Custom Plugin**:
-   - Use a Helm chart or a custom manifest. Here’s an example with a manifest:
-     ```yaml
-     apiVersion: apps/v1
-     kind: Deployment
-     metadata:
-       name: apisix
-     spec:
-       replicas: 1
-       selector:
-         matchLabels:
-           app: apisix
-       template:
-         metadata:
-           labels:
-             app: apisix
-         spec:
-           containers:
-           - name: apisix
-             image: apache/apisix:3.11.0-debian
-             ports:
-             - containerPort: 9080
-             - containerPort: 9180
-             volumeMounts:
-             - name: plugins-volume
-               mountPath: /usr/local/apisix/apisix/plugins/proxy-chain.lua
-               subPath: proxy-chain.lua
-           volumes:
-           - name: plugins-volume
-             configMap:
-               name: apisix-plugins
-     ---
-     apiVersion: v1
-     kind: Service
-     metadata:
-       name: apisix-service
-     spec:
-       ports:
-       - port: 9080
-         targetPort: 9080
-         name: gateway
-       - port: 9180
-         targetPort: 9180
-         name: admin
-       selector:
-         app: apisix
-       type: LoadBalancer
-     ```
-   - Apply the manifests:
-     ```bash
-     kubectl apply -f configmap.yaml
-     kubectl apply -f apisix-deployment.yaml
-     ```
+    - Use a Helm chart or a custom manifest. Here’s an example with a manifest:
+      ```yaml
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: apisix
+      spec:
+        replicas: 1
+        selector:
+          matchLabels:
+            app: apisix
+        template:
+          metadata:
+            labels:
+              app: apisix
+          spec:
+            containers:
+            - name: apisix
+              image: apache/apisix:3.11.0-debian
+              ports:
+              - containerPort: 9080
+              - containerPort: 9180
+              volumeMounts:
+              - name: plugins-volume
+                mountPath: /usr/local/apisix/apisix/plugins/proxy-chain.lua
+                subPath: proxy-chain.lua
+            volumes:
+            - name: plugins-volume
+              configMap:
+                name: apisix-plugins
+      ---
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: apisix-service
+      spec:
+        ports:
+        - port: 9080
+          targetPort: 9080
+          name: gateway
+        - port: 9180
+          targetPort: 9180
+          name: admin
+        selector:
+          app: apisix
+        type: LoadBalancer
+      ```
+    - Apply the manifests:
+      ```bash
+      kubectl apply -f configmap.yaml
+      kubectl apply -f apisix-deployment.yaml
+      ```
 
 4. **Reload APISIX**:
-   - Access the APISIX Admin API to reload:
-     ```bash
-     kubectl exec -it <apisix-pod-name> -- apisix reload
-     ```
+    - Access the APISIX Admin API to reload:
+      ```bash
+      kubectl exec -it <apisix-pod-name> -- apisix reload
+      ```
 
 ---
 
@@ -152,95 +172,95 @@ The `proxy-chain` plugin for APISIX allows you to chain multiple upstream servic
 
 #### Configuration Steps
 1. **Add to Route**:
-   - Use the APISIX Admin API to configure a route:
-     ```bash
-     curl -X PUT http://127.0.0.1:9180/apisix/admin/routes/24 \
-       -H "X-API-KEY: edd1c9f034335f136f87ad84b625c8f1" \
-       -H 'Content-Type: application/json' \
-       -d '{
-         "uri": "/api/v1/checkout",
-         "methods": ["POST"],
-         "plugins": {
-           "proxy-chain": {
-             "services": [
-               {
-                 "uri": "http://customer_service/api/v1/user",
-                 "method": "POST"
-               }
-             ]
-           }
-         },
-         "upstream_id": "550932803756229477"
-       }'
-     ```
+    - Use the APISIX Admin API to configure a route:
+      ```bash
+      curl -X PUT http://127.0.0.1:9180/apisix/admin/routes/24 \
+        -H "X-API-KEY: edd1c9f034335f136f87ad84b625c8f1" \
+        -H 'Content-Type: application/json' \
+        -d '{
+          "uri": "/api/v1/checkout",
+          "methods": ["POST"],
+          "plugins": {
+            "proxy-chain": {
+              "services": [
+                {
+                  "uri": "http://customer_service/api/v1/user",
+                  "method": "POST"
+                }
+              ]
+            }
+          },
+          "upstream_id": "550932803756229477"
+        }'
+      ```
 
 2. **Verify**:
-   - Test the endpoint:
-     ```bash
-     curl -X POST http://<external-ip>/v1/checkout
-     ```
+    - Test the endpoint:
+      ```bash
+      curl -X POST http://<external-ip>/v1/checkout
+      ```
 
 ### Kubernetes
 
 #### Configuration Steps
 1. **Add to Route**:
-   - Assuming APISIX Ingress Controller is installed, use a custom resource (CRD) or Admin API:
-     ```yaml
-     apiVersion: apisix.apache.org/v2
-     kind: ApisixRoute
-     metadata:
-       name: checkout-route
-     spec:
-       http:
-       - name: checkout
-         match:
-           paths:
-           - /v1/checkout
-           methods:
-           - POST
-         backends:
-           - serviceName: upstream-service
-             servicePort: 80
-         plugins:
-         - name: proxy-chain
-           enable: true
-           config:
-             services:
-             - uri: "http://customer_service/api/v1/user"
-               method: "POST"
-     ```
-   - Apply the CRD:
-     ```bash
-     kubectl apply -f route.yaml
-     ```
-   - Alternatively, use the Admin API via port-forwarding:
-     ```bash
-     kubectl port-forward service/apisix-service 9180:9180
-     curl -X PUT http://127.0.0.1:9180/apisix/admin/routes/24 \
-       -H "X-API-KEY: edd1c9f034335f136f87ad84b625c8f1" \
-       -H 'Content-Type: application/json' \
-       -d '{
-         "uri": "/offl/v1/checkout",
-         "methods": ["POST"],
-         "plugins": {
-           "proxy-chain": {
-             "services": [
-               {
-                 "uri": "http://customer_service/api/v1/user",
-                 "method": "POST"
-               }
-             ],
-           }
-         },
-         "upstream_id": "550932803756229477"
-       }'
-     ```
+    - Assuming APISIX Ingress Controller is installed, use a custom resource (CRD) or Admin API:
+      ```yaml
+      apiVersion: apisix.apache.org/v2
+      kind: ApisixRoute
+      metadata:
+        name: checkout-route
+      spec:
+        http:
+        - name: checkout
+          match:
+            paths:
+            - /v1/checkout
+            methods:
+            - POST
+          backends:
+            - serviceName: upstream-service
+              servicePort: 80
+          plugins:
+          - name: proxy-chain
+            enable: true
+            config:
+              services:
+              - uri: "http://customer_service/api/v1/user"
+                method: "POST"
+      ```
+    - Apply the CRD:
+      ```bash
+      kubectl apply -f route.yaml
+      ```
+    - Alternatively, use the Admin API via port-forwarding:
+      ```bash
+      kubectl port-forward service/apisix-service 9180:9180
+      curl -X PUT http://127.0.0.1:9180/apisix/admin/routes/24 \
+        -H "X-API-KEY: edd1c9f034335f136f87ad84b625c8f1" \
+        -H 'Content-Type: application/json' \
+        -d '{
+          "uri": "/offl/v1/checkout",
+          "methods": ["POST"],
+          "plugins": {
+            "proxy-chain": {
+              "services": [
+                {
+                  "uri": "http://customer_service/api/v1/user",
+                  "method": "POST"
+                }
+              ],
+            }
+          },
+          "upstream_id": "550932803756229477"
+        }'
+      ```
 
 2. **Verify**:
-   - Test the endpoint (assuming a LoadBalancer or Ingress):
-     ```bash
-     curl -X POST http://<external-ip>/v1/checkout
-     ```
+    - Test the endpoint (assuming a LoadBalancer or Ingress):
+      ```bash
+      curl -X POST http://<external-ip>/v1/checkout
+      ```
 
 ---
 
@@ -251,39 +271,3 @@ The `proxy-chain` plugin for APISIX allows you to chain multiple upstream servic
 | services.uri   | string | Yes      | -       | URI of the upstream service.                     |
 | services.method| string | Yes      | -       | HTTP method (e.g., "GET", "POST").              |
 | token_header   | string | No       | -       | Custom header to pass a token between services.  |
-
-
-## Expected Behavior:
-The plugin sends {"order_id": "12345"} to customer_service/api/v1/user, receiving something like {"user_id": "67890"}.
-
-It then sends the merged data {"order_id": "12345", "user_id": "67890"} to payment_service/api/v1/validate, receiving {"status": "valid"}.
-
-The final merged data {"order_id": "12345", "user_id": "67890", "status": "valid"} is rewritten to /api/v1/checkout and sent to the upstream.
-
-## Changes Introduced
-Added apisix/apisix/plugins/proxy-chain.lua with the plugin implementation.
-
-Updated documentation in docs/en/latest/plugins/proxy-chain.md (to be added in a follow-up commit if needed).
-
-## Why Include This Plugin?
-Flexibility: Enables complex service orchestration without additional middleware.
-
-Performance: Reduces client-side latency by handling chaining server-side.
-
-Reusability: Useful across various use cases like authentication flows, data aggregation, and microservices coordination.
-
-## Testing
-The plugin has been tested in a Dockerized APISIX environment (version 3.11.0-debian) with the example configuration above.
-
-Error handling for failed service calls and invalid JSON responses is verified.
-
-Suggestions for unit tests in t/plugin/ are welcome!
-
-## Next Steps
-Requesting feedback on the implementation and configuration schema.
-
-Willing to add unit tests if required for acceptance
-
-
-## License
-This plugin is licensed under the Apache License 2.0, consistent with APISIX.
